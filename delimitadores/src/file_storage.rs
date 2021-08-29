@@ -226,7 +226,7 @@ mod tests {
     fn file_operations() -> Result<(), Error>{
         let filename = "test.txt";
         let mut file = FileStorage::<Record>::new(filename.to_string());
-        let records = vec!{Record{id: 1, data: String::from("data")}, Record{id: 2, data: String::from("data 2")}};
+        let records = vec!{Record{id: 1, data: String::from("old data")}, Record{id: 2, data: String::from("data 2")}};
 
         for record in &records {
             file.write(&record)?;
@@ -241,6 +241,10 @@ mod tests {
             assert_eq!(file.deserialize(line).unwrap(), records[i]);
             i += 1;
         }
+
+        file.modify(1, Record{id:1, data:String::from("new data")})?;
+        assert_eq!(file.search(1).unwrap(),Record{id:1, data:String::from("new data")});
+
         file.save();
         Ok(())
     }
@@ -249,7 +253,7 @@ mod tests {
     fn search_delete_and_search_again() -> Result<(), Error>{
         let filename = "test.txt";
         let mut file = FileStorage::<Record>::new(filename.to_string());
-        let records = vec!{Record{id: 1, data: String::from("not data")}, Record{id: 2, data: String::from("data 2")}};
+        let records = vec!{Record{id: 1, data: String::from("data")}, Record{id: 2, data: String::from("data 2")}};
 
         for record in &records {
             file.write(&record)?;
@@ -260,9 +264,6 @@ mod tests {
 
         assert_ne!(file.search(1).unwrap_or(Record{id:0, data:String::from("")}), records[0]);
 
-        file.write(&records[0])?;
-        file.modify(1, Record{id:1, data:String::from("new data")})?;
-        assert_eq!(file.search(1).unwrap(),Record{id:1, data:String::from("new data")});
         file.save();
         Ok(())
     }

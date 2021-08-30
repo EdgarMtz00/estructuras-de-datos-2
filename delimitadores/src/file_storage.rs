@@ -4,10 +4,11 @@ use std::fmt;
 use std::marker::PhantomData;
 
 pub trait Deserializable{
-    fn new (attributes: Vec<String>) -> Self;
+    fn deserialize(attributes: Vec<String>) -> Self;
+    fn serialize(&self) -> String;
 }
 
-pub struct FileStorage <T: fmt::Display> {
+pub struct FileStorage <T: Deserializable> {
     _marker: PhantomData<T>,
     file_output: File,
     buffered_reader: BufReader<File>,
@@ -15,7 +16,7 @@ pub struct FileStorage <T: fmt::Display> {
     insert_pos: Vec<u64>,
 }
 
-impl <T: fmt::Display> FileStorage<T> {
+impl <T: Deserializable> FileStorage<T> {
     pub fn new(filename: String) -> Self {
         let mut output = match OpenOptions::new().write(true).open(&filename){
             Ok(file) => file,
@@ -55,11 +56,11 @@ impl <T: fmt::Display> FileStorage<T> {
     pub fn write(&mut self, record: &T) -> Result<(), Error> {
         if self.insert_pos.len() == 1{
             &self.file_output.seek(SeekFrom::Start(self.insert_pos[0]));
-            self.insert_pos[0] += record.to_string().len() as u64;
+            self.insert_pos[0] += record.serialize().len() as u64;
         }else{
             &self.file_output.seek(SeekFrom::Start(self.insert_pos.pop().unwrap()));
         }
-        write!(&self.file_output, "{}", record.to_string())?;
+        write!(&self.file_output, "{}", record.serialize())?;
         Ok(())
     }
 
@@ -167,12 +168,12 @@ impl <T: fmt::Display> FileStorage<T> {
         Ok(())
     }
 
-    pub fn deserialize(&self, line: &mut String) -> Result<T, Error> where T: Deserializable{
+    pub fn deserialize(&self, line: &mut String) -> Result<T, Error>{
         let mut attributes = Vec::new();
         while let Some(attr) = self.read_attribute(line){
             attributes.push(attr);
         }
-        Ok(T::new(attributes))
+        Ok(T::deserialize(attributes))
     }
 
     pub fn save(&mut self){
@@ -195,6 +196,8 @@ impl <T: fmt::Display> FileStorage<T> {
             self.write_char(digit);
         }
     }
+
+    //TODO: delete all method
 }
 
 #[cfg(test)]
@@ -214,11 +217,14 @@ mod tests {
     }
 
     impl Deserializable for Record{
-        fn new(attributes: Vec<String>) -> Self{
+        fn deserialize(attributes: Vec<String>) -> Self{
             Record{
                 id: attributes[0].parse::<u32>().unwrap(),
                 data: attributes[1].to_string(),
             }
+        }
+        fn serialize(&self) -> String{
+            format!("{}|{}|\n", self.id, self.data)
         }
     }
 

@@ -1,5 +1,5 @@
 use std::fs::{File, OpenOptions};
-use std::io::{Write, BufReader, Error, BufRead, SeekFrom, Seek};
+use std::io::{Write, BufReader, Error, BufRead, SeekFrom, Seek, ErrorKind};
 use std::fmt;
 use std::marker::PhantomData;
 
@@ -20,7 +20,8 @@ impl <T: Deserializable> FileStorage<T> {
     pub fn new(filename: String) -> Self {
         let mut output = match OpenOptions::new().write(true).open(&filename){
             Ok(file) => file,
-            Err(e) => panic!("Can't edit file due to: {}", e),
+            Err(e) if e.kind() == ErrorKind::NotFound => File::create(&filename).unwrap(),
+            Err(e) => panic!("Can't edit file due to: {} ({:?})", e, e.kind()),
         };
 
         let mut reader = match File::open(filename.to_string()){
@@ -115,11 +116,11 @@ impl <T: Deserializable> FileStorage<T> {
 
     fn search_line<'buf>(&mut self, id:impl PartialEq + fmt::Display, buffer:&'buf mut String) -> Option<&'buf mut String>{
         let mut reset = true;
-        //self.insert_pos = self.cursor;
+        
         while let Some(mut line) = self.read_line(buffer, reset) {
             reset = false;
             let line_start = line.len();
-            let attribute = self.read_attribute(&mut line).unwrap();
+            let attribute = self.read_attribute(&mut line).unwrap().chars().filter(|&c| c.is_ascii_digit()).collect::<String>();
             if attribute == id.to_string() {
                 self.cursor -= line_start as u64;
                 return self.read_line(buffer, false)
@@ -158,7 +159,7 @@ impl <T: Deserializable> FileStorage<T> {
                 self.write_char('\n')?;
                 Ok(())
             },
-            None => Ok(())
+            None => Err(Error::new(ErrorKind::NotFound, "Not Found"))
         }
     }
 
@@ -197,7 +198,43 @@ impl <T: Deserializable> FileStorage<T> {
         }
     }
 
-    //TODO: delete all method
+    pub fn next_id(&mut self,) -> u32{
+        let mut buffer = String::new();
+        let mut reset = true;
+        let mut id = 0;
+        while let Some(mut line) = self.read_line(&mut buffer, reset){
+            reset = false;
+            let next = self.read_attribute(&mut line);
+            if next.is_some() {
+                let next = next.unwrap().chars().filter(|&c| c.is_ascii_digit()).collect::<String>();
+                if !next.is_empty(){
+                    let next = next.parse::<u32>().unwrap();
+                    if next > id {
+                        id = next;
+                    }
+                }
+            }
+        }
+        id + 1
+    }
+
+    pub fn delete_all(&mut self) -> Result<(), Error>{
+        let mut buffer = String::new();
+        let mut reset = true;
+        while let Some(mut line) = self.read_line(&mut buffer, reset){
+            reset = false;
+            let next = self.read_attribute(&mut line);
+            if next.is_some() {
+                let next = next.unwrap();
+                if !next.chars().all(|c| c == ' ' || c == '\n') {
+                    let next = next.parse::<u32>().unwrap();
+                    self.delete(next)?;
+                }
+            }
+        }
+        self.insert_pos[0] = 18;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -250,7 +287,9 @@ mod tests {
 
         file.modify(1, Record{id:1, data:String::from("new data")})?;
         assert_eq!(file.search(1).unwrap(),Record{id:1, data:String::from("new data")});
+        assert_eq!(3, file.next_id());
 
+        file.delete_all()?;
         file.save();
         Ok(())
     }
@@ -269,13 +308,10 @@ mod tests {
         file.delete(1)?;
 
         assert_ne!(file.search(1).unwrap_or(Record{id:0, data:String::from("")}), records[0]);
+        assert_eq!(None, file.search(420));
 
+        file.delete_all()?;
         file.save();
         Ok(())
     }
 }
-
-
-
-
-

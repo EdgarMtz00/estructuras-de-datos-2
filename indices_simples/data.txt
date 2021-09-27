@@ -1,3 +1,4 @@
-166              
-  1  |          edgar          |        martinez         |20 | 70  | 180 
-  2  |         agustin         |        gonzalez         |21 | 70  | 180 
+240              
+  1  |         agustin         |        martinez         |21 | 89  | 180 
+                                                                         
+  3  |          juan           |          roman          |20 | 90  | 170 

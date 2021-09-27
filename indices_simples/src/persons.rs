@@ -4,7 +4,7 @@ use crate::get_input;
 
 pub struct Person {
     pub id: u32,
-    nombre: String,
+    pub nombre: String,
     apellidos: String,
     edad: u32,
     peso: u32,
@@ -52,7 +52,7 @@ impl fmt::Display for Person {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}.-\n\tNombre: {}\n\tApellidos: {}\n\tEdad: {}\n\tPeso: {}\n\tAltura: {}\n",
+            "{}.-\n\tNombre: {} \n\tApellidos: {} \n\tEdad: {} \n\tPeso: {} \n\tAltura: {} \n",
             self.id, self.nombre, self.apellidos, self.edad, self.peso, self.altura
         )
     }
@@ -68,11 +68,11 @@ impl Deserializable for Person {
             .unwrap();
         let nombre = attributes[1]
             .chars()
-            .filter(|&c| c.is_ascii_digit())
+            .filter(|&c| c != ' ' && c != '\n')
             .collect::<String>();
         let apellidos = attributes[2]
             .chars()
-            .filter(|&c| c.is_ascii_digit())
+            .filter(|&c| c != ' ' && c != '\n')
             .collect::<String>();
         let edad = attributes[3]
             .chars()

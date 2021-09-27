@@ -63,7 +63,7 @@ fn main() {
                 match result {
                     Some(data) => {
                         let person = Person::new(data.id);
-                        data_file.modify(num, person);
+                        data_file.modify(data.id, person);
                     },
                     None => {
                         println!("No se encontro esa clave\n");

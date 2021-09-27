@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "campos_dimension"
+name = "file_storage"
 version = "0.1.0"
